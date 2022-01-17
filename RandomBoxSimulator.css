@@ -1,0 +1,60 @@
+/*
+// css for 뽑기 확률 계산기(random box simulator)
+// Author: ProjectEli (https://projecteli.tistory.com/)
+// Date: 2022-01-17
+// ProjectEli 2022, All rights reserved.
+*/
+/*
+body {
+  font-family: system-ui;
+  background: #f06d06;
+  color: white;
+  text-align: center;
+}
+*/
+.container {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  flex-wrap:wrap;
+  max-width: 550px;
+  row-gap: 5px;
+}
+.row {
+  margin-right: -15px;
+  margin-left: -15px;
+}
+.col {
+  flex-basis: 0;
+  flex-grow:1;
+  padding-left: 15px;
+  padding-right: 15px;
+}
+.button {
+  padding: 15px;
+}
+
+.btn-success{
+  width: 100%;
+  margin-bottom: 15px;
+}
+
+.text-center {
+  flex-wrap: wrap;
+}
+
+.hidden {
+  display:none;
+}
+
+.table td {
+  vertical-align: top;
+}
+
+.table tr {
+  vertical-align: top;
+}
+
+h2 {
+  margin-top: 30px;
+}
