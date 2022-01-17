@@ -1,0 +1,102 @@
+<!--
+Author: ProjectEli(https://projecteli.tistory.com/) 
+Date:2022-01-17
+ProjectEli 2022, All rights reserved.
+-->
+<div class="container">
+    <div class="row">
+        <div class="col">
+            <div class="form-group">
+                <label for="probvalue">
+                    1뽑당 확률
+                    <span class="text-danger">*</span>
+                </label>
+                <div class="input-group" >
+                    <div class="input-group mb-3">
+                        <input type="number" id="probvalue" class="form-control" placeholder="확률 %값" 
+                        value="5.0" min="0" max="100" 
+                        aria-describedby="basic-addon2" data-bs-toggle="tooltip" data-bs-placement="bottom" title="1회 뽑을 때 나올 확률(0~100%)">
+                        <div class="input-group-append">
+                            <span class="input-group-text">%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="form-group">
+                <label for="costper">
+                    1뽑 가격
+                </label>
+                <div class="input-group">
+                    <div class="input-group mb-3">
+                        <input type="number" id="costper" class="form-control" placeholder="뽑기 가격" 
+                        value="100" min="0"
+                        aria-describedby="basic-addon2" data-bs-toggle="tooltip" data-bs-placement="bottom" title="1회 뽑을 때 드는 비용(0~제한없음)">
+                        <div class="input-group-append">
+                            <select class="input-group-text dropdown-toggle" id="costperunit" type="button" >
+                                <option selected>다이아</option>
+                                <option>원</option>
+                                <option>골</option>
+                                <option>돌</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <div class="form-group">
+                <label for="numtrials">
+                    뽑기 시도 횟수
+                    <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                    <div class="input-group mb-3">
+                        <input type="number" id="numtrials" class="form-control" placeholder="10" 
+                        value="10" min="0" max="50000" 
+                        aria-describedby="basic-addon2" data-bs-toggle="tooltip" data-bs-placement="bottom" title="뽑고 싶은 횟수(0~10000회)">
+                        <div class="input-group-append">
+                            <span class="input-group-text">회</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="form-group">
+                <label for="numwant">
+                    당첨 횟수 목표
+                </label>
+                <div class="input-group">
+                    <div class="input-group mb-3">
+                        <input type="number" id="numwant" class="form-control" placeholder="1" 
+                        value="1" min="1"
+                        aria-describedby="basic-addon2" data-bs-toggle="tooltip" data-bs-placement="bottom" title="원하는 당첨 횟수(뽑기 시도수보다 작아야 함)">
+                        <div class="input-group-append">
+                            <span class="input-group-text">회</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="item">
+        <button type="button" class="btn btn-success btn-lg"
+            id="btn-prop-calc">계산!</button>
+    </div>
+
+    <div class="item" id="prop-calc-result">
+    </div>
+
+    <div class="text-center hidden" id="loader">
+        <div class="spinner-grow text-primary" role="status"></div>
+        <div class="item">확률 계산 중입니다. 잠시만 기다려주세요.</div>
+    </div>
+
+    <div class="text-center">실행시간: </div>
+    <div class="text-center" id="elapsedtime"></div>
+</div>
