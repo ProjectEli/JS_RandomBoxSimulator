@@ -1,7 +1,9 @@
-// 뽑기 확률 계산기(random box simulator)
+// 뽑기 확률 계산기(random box simulator) v2
 // Author: ProjectEli (https://projecteli.tistory.com/)
-// Date: 2022-01-17
+// Date: 2022-05-26
 // ProjectEli 2022, All rights reserved.
+// v1 (2022-01-17): initial release
+// v2 (2022-05-26): introduced binary search for required trials. Increased upper limit of trials to 2**31-1. Minor change in displayed characters
 
 var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
 var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -32,13 +34,14 @@ function MainWork() {
   let errMsg = isValidInputPack[1];
 
   if (isValidInput) {
-    let problist = calc_probs_full(probvalue,trials);
+    // let problist = calc_probs_full(probvalue,trials);
+    let problist = calc_probs_partial(probvalue,trials,numwant); // only calculates first numwant-1 array components min 10 elements to show
 
     // main calculation
     let successtable = buildSuccessTable(problist,trials,numwant);
     let firstFewWinnings = buildFirstFewWinningsTable(problist,trials,numwant);
 
-    let targetProbPercentList = [10,20,30,40,50,60,70,80,90,95,99];
+    let targetProbPercentList = [10,20,30,40,50,60,70,80,90,95,98,99];
     let requiredTrials = buildRequiredTrialsTable(probvalue,numwant,costper,costperUnit,targetProbPercentList);
 
     // display success or not prob
@@ -46,11 +49,11 @@ function MainWork() {
     resulttag.append(successtable);
 
     // display first few winnings
-    resulttag.append("<h2>N회 이상 당첨 확률(10회까지)</h2>");
+    resulttag.append("<h2>"+trials.toString()+"회 시도시 N회 이상 당첨 확률(당첨 10회까지)</h2>");
     resulttag.append(firstFewWinnings);
 
     // display required trials
-    resulttag.append("<h2>"+numwant.toString()+"회 이상 당첨될 때까지 예상 뽑기 횟수</h2>");
+    resulttag.append("<h2>1회당 당첨 확률이 "+(probvalue*100).toString()+"%일 때 "+numwant.toString()+"회 이상 당첨될 때까지 예상 뽑기 횟수</h2>");
     resulttag.append(requiredTrials);
   }
   else {
@@ -72,8 +75,8 @@ function IsValidInput(probvalue,trials,numwant) {
   else if (probvalue>=1) {
     return [false, "계산 실패: 1뽑 확률이 100% 이상입니다!"]
   }
-  else if (trials>10000) {
-    return [false, "계산 실패: 뽑기 시도 횟수가 10000회보다 큽니다!(최대 10000회)"]
+  else if (trials>50000) {
+    return [false, "계산 실패: 뽑기 시도 횟수가 50000회보다 큽니다!(최대 50000회)"]
   }
   else {
     return [true, ""];
@@ -160,6 +163,57 @@ function binomial(n, k) {
   return coeff
 }
 
+// ref: https://www.codegrepper.com/code-examples/javascript/javascript+bigdecimal
+class BigDecimal {
+    // Configuration: constants
+    static DECIMALS = 20; // number of decimals on all instances
+    static ROUNDED = true; // numbers are truncated (false) or rounded (true)
+    static SHIFT = BigInt("1" + "0".repeat(BigDecimal.DECIMALS)); // derived constant
+    constructor(value) {
+        if (value instanceof BigDecimal) return value;
+        let [ints, decis] = String(value).split(".").concat("");
+        this._n = BigInt(ints + decis.padEnd(BigDecimal.DECIMALS, "0")
+                                     .slice(0, BigDecimal.DECIMALS)) 
+                  + BigInt(BigDecimal.ROUNDED && decis[BigDecimal.DECIMALS] >= "5");
+    }
+    static fromBigInt(bigint) {
+        return Object.assign(Object.create(BigDecimal.prototype), { _n: bigint });
+    }
+    add(num) {
+        return BigDecimal.fromBigInt(this._n + new BigDecimal(num)._n);
+    }
+    subtract(num) {
+        return BigDecimal.fromBigInt(this._n - new BigDecimal(num)._n);
+    }
+    static _divRound(dividend, divisor) {
+        return BigDecimal.fromBigInt(dividend / divisor 
+            + (BigDecimal.ROUNDED ? dividend  * 2n / divisor % 2n : 0n));
+    }
+    multiply(num) {
+        return BigDecimal._divRound(this._n * new BigDecimal(num)._n, BigDecimal.SHIFT);
+    }
+    divide(num) {
+        return BigDecimal._divRound(this._n * BigDecimal.SHIFT, new BigDecimal(num)._n);
+    }
+    toString() {
+        const s = this._n.toString().padStart(BigDecimal.DECIMALS+1, "0");
+        return s.slice(0, -BigDecimal.DECIMALS) + "." + s.slice(-BigDecimal.DECIMALS)
+                .replace(/\.?0+$/, "");
+    }
+}
+
+function binomial_bigdecimal(n, k) {
+     if ((typeof n !== 'number') || (typeof k !== 'number')) 
+  return false; 
+    var coeff = new BigDecimal("1");
+    k = Math.min(k,n-k);
+    for (let k2=1; k2<=k;k2++) {
+      coeff = coeff.multiply((n-k2+1).toString()).divide(k2.toString());
+    }
+  return coeff
+}
+//alert(binomial_bigdecimal(1000000,10))
+
 
 function calc_probs_full(probvalue, trials) {
   // let probvalue = parseFloat($("#probvalue").val()) /100; // double number
@@ -169,13 +223,36 @@ function calc_probs_full(probvalue, trials) {
   for (let k =0; k <= trials; k++) {
     //problist[k] = nck(trials,k)*(probvalue**k)*(reciproc_probvalue**(trials-k));
     //problist[k] = math.combinations(trials,k)*(probvalue**k)*(reciproc_probvalue**(trials-k));
-    problist[k] = binomial(trials,k)*(probvalue**k)*(reciproc_probvalue**(trials-k));
+    //problist[k] = binomial(trials,k)*(probvalue**k)*(reciproc_probvalue**(trials-k));
+    problist[k] = binomial(trials,k)*Math.exp( k*Math.log(probvalue)+(trials-k)*Math.log(reciproc_probvalue));
   }
   return problist;
 }
 
+function calc_probs_partial(probvalue, trials, numwant) {
+  let problist = [];
+  let reciproc_probvalue = 1-probvalue;
+  
+  // including zero win(+1), considering for loop k<max_k (+1)
+  let max_k = Math.min( Math.max(numwant,10), trials+2); 
+  
+  for (let k =0; k <= max_k; k++) {
+    //problist[k] = binomial(trials,k)*(probvalue**k)*(reciproc_probvalue**(trials-k));
+    problist[k] = binomial(trials,k)*Math.exp( k*Math.log(probvalue)+(trials-k)*Math.log(reciproc_probvalue));
+  }
+  return problist
+}
+
 function prob_notsuccess(problist,numwant) {
   return cumulative_specific(problist,numwant-1);
+}
+
+function prob_notsuccess_partial(problist,numwant) {
+  var sum =0;
+  for (let k=0; k<numwant; k++) {
+    sum += problist[k];
+  }
+  return sum;
 }
 
 function cumulative_specific(problist,index) {
@@ -187,7 +264,8 @@ function cumulative_specific(problist,index) {
 }
 
 function buildSuccessTable(problist,trials,numwant) { //assume numwant>=1
-  let prob_failed = prob_notsuccess(problist,numwant);
+  // let prob_failed = prob_notsuccess(problist,numwant);
+  let prob_failed = prob_notsuccess_partial(problist,numwant);
   let prob_succeed = 1-prob_failed;
   
   let tb = probTableTemplate("당첨 횟수","달성 확률");
@@ -219,7 +297,14 @@ function buildFirstFewWinningsTable(problist,trials,numwant) {
       tr.className = "table-success";
     }
     let probPercent = problist[k]*100;
-    setRowContent(tr, k.toString()+"회",probPercent,100-cumulativeProbPercent);    
+    const inverseCumulativeProbPercent = 100.0-cumulativeProbPercent;
+    if (inverseCumulativeProbPercent >= 0) {
+      setRowContent(tr, k.toString()+"회",probPercent,inverseCumulativeProbPercent); 
+    }
+    else {
+      setRowContent(tr, k.toString()+"회",probPercent,0);
+    }
+       
     cumulativeProbPercent += probPercent;
   }
   return tb;
@@ -269,65 +354,39 @@ function FindFirst(arr,criterion) { // return first matching index
   return 0; // should not be executed
 }
 
-function buildRequiredTrialsTable(probvalue,numwant,costper,costperUnit,targetProbPercentList) {
-  let NvP = targetProbPercentList.length;
-  let vP = [];
-  for (let k=0; k<NvP; k++) {
-    vP.push(targetProbPercentList[k]/100);
+function buildRequiredTrialsTable(probabilityPerTrial,targetWinnings,costPerTrial,costUnit,targetProbPercentList) {
+  const targetProbPercentListLength = targetProbPercentList.length; 
+  let targetProbList = []; // target Probs to be displayed
+  for (let k=0; k<targetProbPercentListLength; k++) {
+    targetProbList.push(targetProbPercentList[k]/100); // percent to actual number
+  }
+  let requiredTrials = [];
+  
+  // binary search
+  const MAX_TRIALS = 2**31-1;
+  for (const targetProb of targetProbList) {
+    let trialsLowerBound = 1;
+    let trialsUpperBound = MAX_TRIALS;
+    do {
+      const testTrials = Math.floor((trialsLowerBound + trialsUpperBound) / 2);
+      if (testTrials === trialsUpperBound) { // select upper bound
+        requiredTrials.push(trialsUpperBound);
+        break;
+      }
+
+      const testProb = binocdf_upper(targetWinnings-1, testTrials, probabilityPerTrial);
+      if (targetProb - testProb >= 0) { // correction to upper side
+        trialsLowerBound = testTrials + 1;
+      } 
+      else { // correction to lower side
+        trialsUpperBound = testTrials - 1;
+      }
+    } while (trialsLowerBound <= trialsUpperBound );
   }
   
-  let testn = [1,10,1e2,1e3,1e4,1e5,1e6];
-  let testp = binocdf_upper_array(numwant-1,testn,probvalue);
-  
-  let thd = 1e-6; // critical threshold
-  let testPDelta = []; // differential array. length is length-1
-  let validni = [];
-  for (let k=0; k<NvP-1;k++) {
-    testPDelta.push(testp[k+1]-testp[k]-thd);
-    if (testPDelta[k]>0) {
-      validni.push(k);
-    }
-  }
-  let minvalidni = validni[0];
-  if (minvalidni>0) {
-    minvalidni -= 1;
-  }
-  
-  let maxvalidni = validni[validni.length-1];
-  if (maxvalidni<NvP-1) {
-    maxvalidni += 1;
-  }
-  
-  let minvalidn = testn[minvalidni];
-  let maxvalidn = testn[maxvalidni];
-  let validInterval = Math.ceil( (maxvalidn-minvalidn)/1000 ); // test 1001 points
-  
-  let roughn = [];
-  for (let k=minvalidn; k<=maxvalidn; k=k+validInterval) {
-    roughn.push(k);
-  }
-  let roughP = binocdf_upper_array(numwant-1,roughn,probvalue);
-  let Nrough = roughn.length;
-  
-  let reqn = [];
-  if (validInterval>1) {
-    let approxn = interp1_ceil(roughP,roughn,vP); // linear interpolation then ceil
-    let approxP = binocdf_upper_array(numwant-1,approxn,probvalue);
-    for (let k=0; k<NvP; k++) {
-      reqn.push( approxn[FindFirst(approxP,vP[k])]);
-    }
-  }
-  else {
-    let exactn = roughn;
-    let exactP = roughP;
-    for (let k=0; k<NvP; k++) {
-      reqn.push( exactn[ FindFirst(exactP, vP[k])]);
-    }
-  }
-  let requiredTrials = reqn;
    
   //build table
-  let tb = probTableTemplate("가능성","요구 뽑기 수","예상 비용");
+  let tb = probTableTemplate("달성 가능성","요구 뽑기 수","예상 비용");
   
   for (let k=0; k<requiredTrials.length; k++) {
     var tr = tb.insertRow();
@@ -348,9 +407,9 @@ function buildRequiredTrialsTable(probvalue,numwant,costper,costperUnit,targetPr
       tr.className = "table-danger";
     }
     let requiredTrial = requiredTrials[k];
-    let expectedCost = requiredTrial*costper;
+    let expectedCost = requiredTrial*costPerTrial;
     setRowContentRequiredTrials(tr, targetProb+"%",requiredTrial+"회",
-                                expectedCost.toString()+costperUnit);
+                                expectedCost.toString()+costUnit);
   }
   return tb;
 }
